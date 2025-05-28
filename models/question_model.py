@@ -7,18 +7,23 @@ class Example(BaseModel):
     output: str
 
 
+class Complexity(BaseModel):
+    time: str
+    space: str
+
+
 class Approach(BaseModel):
     title: str
-    notes: Optional[str] = ""
-    code: Optional[str] = ""
-    complexity: Optional[dict] = {}
-    handles: Optional[List[str]] = []
+    notes: str
+    code: str
+    complexity: Complexity
+    handles: Optional[List[str]] = None  # optional, present only in some entries
 
 
 class EdgeCase(BaseModel):
     input: str
     expected_output: str
-    note: Optional[str] = ""
+    note: str
 
 
 class TestCase(BaseModel):
@@ -31,7 +36,7 @@ class ComplexityComparison(BaseModel):
     name: str
     time: str
     space: str
-    notes: Optional[str] = ""
+    notes: str
 
 
 class QuestionData(BaseModel):
