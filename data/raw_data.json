@@ -1,0 +1,79 @@
+[
+  {
+  "question_id": "second_largest_number_array",
+  "title": "Find the Second Largest Number in an Array",
+  "problem_statement": "Given an array of integers, find the second largest unique number in the array. You must not sort the array. Return None if a second largest value doesn’t exist (e.g., array has fewer than 2 unique elements).",
+  "understanding": "Duplicates: Multiple instances of the largest number should not count.\nSingle element or identical elements: No second largest.\nNegative numbers & zeros are valid inputs.\nAvoid sorting due to its higher time complexity (O(n log n)).",
+  "examples": [
+    {"input": "[10, 20, 4, 45, 99]", "output": "45"},
+    {"input": "[3, 3, 3]", "output": "None"},
+    {"input": "[9, 9, 8, 8, 7]", "output": "8"},
+    {"input": "[5]", "output": "None"},
+    {"input": "[2, 2, 1, 1, 3]", "output": "2"}
+  ],
+  "approaches": [
+    {
+      "title": "Approach 1: Brute Force with Unique Elements",
+      "notes": "Not recommended",
+      "code": "def second_largest_brute(arr):\n    unique = set(arr)\n    if len(unique) < 2:\n        return None\n    unique.remove(max(unique))\n    return max(unique)",
+      "complexity": {
+        "time": "O(n)",
+        "space": "O(n)"
+      }
+    },
+    {
+      "title": "Approach 2: One-Pass Linear Scan",
+      "notes": "Optimal",
+      "code": "def second_largest_optimal(arr):\n    first = second = float('-inf')\n    for num in arr:\n        if num > first:\n            second = first\n            first = num\n        elif first > num > second:\n            second = num\n    return second if second != float('-inf') else None",
+      "handles": [
+        "Duplicates",
+        "Negative numbers",
+        "No need for extra data structures"
+      ],
+      "complexity": {
+        "time": "O(n)",
+        "space": "O(1)"
+      }
+    }
+  ],
+  "edge_cases": [
+    {"input": "[10]", "expected_output": "None", "note": "Only one element"},
+    {"input": "[5, 5, 5, 5]", "expected_output": "None", "note": "All elements are the same"},
+    {"input": "[1, 2, 2, 3]", "expected_output": "2", "note": "Handles duplicates correctly"},
+    {"input": "[10, -1, 5]", "expected_output": "5", "note": "Negative numbers are allowed"},
+    {"input": "[100, 99, 98, 97]", "expected_output": "99", "note": "Normal case with descending order"}
+  ],
+  "test_cases": [
+    {"title": "Simple Increasing", "input": "[1, 2, 3, 4]", "output": "3"},
+    {"title": "All Same", "input": "[5, 5, 5]", "output": "None"},
+    {"title": "Negative Numbers", "input": "[-1, -2, -3, -4]", "output": "-2"},
+    {"title": "Random with Duplicates", "input": "[3, 1, 3, 2]", "output": "2"},
+    {"title": "Edge Case - One Element", "input": "[10]", "output": "None"}
+  ],
+  "complexity_comparison": [
+    {
+      "name": "Brute-force (set + max)",
+      "time": "O(n)",
+      "space": "O(n)",
+      "notes": "Simple but extra space"
+    },
+    {
+      "name": "One-pass max tracking",
+      "time": "O(n)",
+      "space": "O(1)",
+      "notes": "Best for interviews"
+    },
+    {
+      "name": "Sorting (not allowed here)",
+      "time": "O(n log n)",
+      "space": "O(1)–O(n)",
+      "notes": "Not optimal or allowed per spec"
+    }
+  ],
+  "interviewer_followups": [
+    "What if you had to find the 3rd largest? (extend logic or use min-heap)",
+    "Can you modify this for a stream of numbers? (use two variables or heaps)",
+    "How would you do this if array is huge and you can’t load it all? (streaming or external sorting)"
+  ]
+}
+]

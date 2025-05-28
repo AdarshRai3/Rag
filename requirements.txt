@@ -1,0 +1,18 @@
+google-generativeai>=0.8.2
+python-dotenv>=1.0.1
+llama-index>=0.11.11
+llama-index-embeddings-huggingface>=0.3.1
+llama-index-vector-stores-upstash == 0.3.0
+upstash-vector== 0.4.0
+livekit==1.0.8
+livekit-agents==1.0.21
+livekit-api==1.0.2
+livekit-plugins-aws==1.0.21
+livekit-plugins-cartesia==1.0.21
+livekit-plugins-deepgram==1.0.21
+livekit-plugins-noise-cancellation==0.2.4
+livekit-plugins-openai==1.0.21
+livekit-plugins-silero==1.0.21
+livekit-plugins-turn-detector==1.0.21
+livekit-protocol==1.0.3
+openai==1.77.0
