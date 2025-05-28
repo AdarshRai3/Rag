@@ -7,9 +7,12 @@ logger = logging.getLogger("main")
 if __name__ == '__main__':
     service = VectorStorageService()
 
-    # To populate the index from JSON, uncomment:
+    # Uncomment to index from scratch:
     # service.store_from_json('./data/raw_data.json')
 
-    # To load the existing index:
-    index = service.load_index()
-    logger.info('Index loaded successfully and ready for querying.')
+    # Load (or rebuild if needed) and use index
+    index = service.load_index(
+        persist_dir='./retrieval-engine-storage',
+        json_path='./data/questions.json'
+    )
+    logger.info('Index ready for queries.')

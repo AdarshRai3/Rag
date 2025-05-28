@@ -2,11 +2,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-from llama_index.core import (
-    StorageContext,
-    VectorStoreIndex,
-    load_index_from_storage,
-)
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.core import StorageContext, load_index_from_storage
 from llama_index.vector_stores.upstash import UpstashVectorStore
 from llama_index.core.schema import MetadataMode
 
@@ -17,89 +14,84 @@ from livekit.agents import (
     JobContext,
     WorkerOptions,
     cli,
-    llm,
+    llm
 )
 from livekit.agents.voice.agent import ModelSettings
 from livekit.plugins import deepgram, openai, silero, aws
 
-# Load environment variables
+# Load env
 load_dotenv()
-
 UPSTASH_URL = os.getenv("UPSTASH_VECTOR_REST_URL")
 UPSTASH_TOKEN = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
-THIS_DIR = Path(__file__).parent
-PERSIST_DIR = THIS_DIR / "retrieval-engine-storage"
+# Paths
+THIS_DIR = Path(__file__).parent.parent
+PERSIST_DIR = THIS_DIR / 'retrieval-engine-storage'
+DATA_JSON = THIS_DIR / 'data' / 'questions.json'
 
-# Initialize Upstash vector store
-vector_store = UpstashVectorStore(
-    url=UPSTASH_URL,
-    token=UPSTASH_TOKEN,
+# Initialize vector store & embedder
+vector_store = UpstashVectorStore(url=UPSTASH_URL, token=UPSTASH_TOKEN)
+embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+# Load index with consistent embed_model
+storage_context = StorageContext.from_defaults(
+    vector_store=vector_store,
+    persist_dir=str(PERSIST_DIR)
+)
+index = load_index_from_storage(
+    storage_context,
+    vector_store=vector_store,
+    embed_model=embed_model
 )
 
-# Load the existing index ONLY from persisted storage, with Upstash vector store
-storage_context = StorageContext.from_defaults(persist_dir=PERSIST_DIR)
-index = load_index_from_storage(storage_context, vector_store=vector_store)
-
 class RetrievalAgent(Agent):
-    def __init__(self, index: VectorStoreIndex):
+    def __init__(self):
         super().__init__(
-            instructions=(
-                "You are a voice assistant created by LiveKit. Your interface "
-                "with users will be voice. Use short and concise responses."
-            ),
+            instructions="You are a concise voice assistant.",
             vad=silero.VAD.load(),
             llm=openai.LLM(model="gpt-4o-mini"),
             stt=deepgram.STT(model="nova-2"),
             tts=aws.TTS(
-               voice="Raveena",
-               speech_engine="standard",
-               language="en-IN",
+                voice="Raveena",
+                speech_engine="standard",
+                language="en-IN"
             )
         )
         self.index = index
 
     async def llm_node(
         self,
-        chat_ctx: llm.ChatContext,
+        chat_ctx,
         tools: list[llm.FunctionTool],
-        model_settings: ModelSettings,
+        model_settings: ModelSettings
     ):
         user_msg = chat_ctx.items[-1]
-        assert isinstance(user_msg, llm.ChatMessage) and user_msg.role == "user"
         user_query = user_msg.text_content
-        assert user_query is not None
-
         retriever = self.index.as_retriever()
         nodes = await retriever.aretrieve(user_query)
 
-        instructions = "Context that might help answer the user's question:"
-        for node in nodes:
-            node_content = node.get_content(metadata_mode=MetadataMode.LLM)
-            instructions += f"\n\n{node_content}"
+        context_str = "".join(
+            f"\n- {n.get_content(metadata_mode=MetadataMode.LLM)}" for n in nodes
+        )
+        prompt = f"Context:\n{context_str}\nQuestion: {user_query}"
 
-        system_msg = chat_ctx.items[0]
-        if isinstance(system_msg, llm.ChatMessage) and system_msg.role == "system":
-            system_msg.content.append(instructions)
+        sys_msg = chat_ctx.items[0]
+        if sys_msg.role == 'system':
+            sys_msg.content = [prompt]
         else:
-            chat_ctx.items.insert(0, llm.ChatMessage(role="system", content=[instructions]))
-        
-        cleaned_instructions = instructions[:100].replace('\n', ' ')
-        print(f"Updated instructions: {cleaned_instructions}...")
+            chat_ctx.items.insert(0, llm.ChatMessage(role='system', content=[prompt]))
 
-        return await super().llm_node(chat_ctx, tools, model_settings)
+        # Note: super().llm_node returns an async generator, so return it directly
+        return super().llm_node(chat_ctx, tools, model_settings)
 
 async def entrypoint(ctx: JobContext):
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-
-    agent = RetrievalAgent(index)
+    agent = RetrievalAgent()
     session = AgentSession()
     await session.start(agent=agent, room=ctx.room)
+    await session.say("Hello! How can I assist you today?", allow_interruptions=True)
 
-    await session.say("Hey, how can I help you today?", allow_interruptions=True)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
