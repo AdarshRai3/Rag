@@ -44,14 +44,27 @@ class VectorStorageService:
         try:
             questions = self._load_json(json_path)
             nodes = self._build_nodes(questions)
-            self._index_nodes(nodes)
-            print(f"Stored {len(nodes)} chunks in the vector store.")
-            logger.info("Successfully stored question chunks.")
+
+            # Index and persist
+            storage_context = StorageContext.from_defaults(
+                vector_store=self.vector_store
+            )
+            index = VectorStoreIndex(
+                nodes=nodes,
+                storage_context=storage_context,
+                embed_model=self.embed_model,
+                show_progress=True
+            )
+
+            index.storage_context.persist(persist_dir="./retrieval-engine-storage")
+
+            logger.info("Index metadata persisted at ./retrieval-engine-storage")
+            logger.info(f"Stored {len(nodes)} text chunks in the vector store and persisted metadata.")
         except Exception as e:
             logger.error(f"Error during storage: {str(e)}", exc_info=True)
 
     def _load_json(self, path: str) -> List[QuestionData]:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         return [QuestionData(**item) for item in data]
 
@@ -89,7 +102,7 @@ class VectorStorageService:
                 }
                 nodes.append(make_node(examples_text, "examples", examples_meta))
 
-            # Approaches (include title, notes, code, handles, complexity)
+            # Approaches
             if question.approaches:
                 approach_chunks = []
                 for ap in question.approaches:
@@ -103,7 +116,6 @@ class VectorStorageService:
                     if ap.handles:
                         chunk.append("Handles: " + ", ".join(ap.handles))
                     approach_chunks.append("\n".join(chunk))
-
                 approaches_text = "\n\n".join(approach_chunks)
                 approaches_meta = {
                     "approaches": json.dumps([ap.model_dump() for ap in question.approaches])
@@ -148,16 +160,17 @@ class VectorStorageService:
             # Interviewer follow-ups
             if question.interviewer_followups:
                 follow_text = "\n".join(f"- {f}" for f in question.interviewer_followups)
-                follow_meta = {"interviewer_followups": json.dumps(question.interviewer_followups)}
+                follow_meta = {
+                    "interviewer_followups": json.dumps(question.interviewer_followups)
+                }
                 nodes.append(make_node(follow_text, "interviewer_followups", follow_meta))
 
         return nodes
 
-    def _index_nodes(self, nodes: List[TextNode]) -> None:
-        storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
-        VectorStoreIndex(
-            nodes=nodes,
-            storage_context=storage_context,
-            embed_model=self.embed_model,
-            show_progress=True
+    def load_index(self) -> VectorStoreIndex:
+        storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store,
+            persist_dir="./retrieval-engine-storage"
         )
+        index = VectorStoreIndex(storage_context=storage_context)
+        return index
