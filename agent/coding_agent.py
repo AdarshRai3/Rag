@@ -19,6 +19,8 @@ from livekit.agents import (
 from livekit.agents.voice.agent import ModelSettings
 from livekit.plugins import deepgram, openai, silero, aws
 
+#Upstash Rag Agent
+
 # Load env variables
 load_dotenv()
 UPSTASH_URL = os.getenv("UPSTASH_VECTOR_REST_URL")
