@@ -6,8 +6,10 @@ from typing import List
 from dotenv import load_dotenv
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import VectorStoreIndex, StorageContext, load_index_from_storage
-from llama_index.vector_stores.upstash import UpstashVectorStore
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
 from llama_index.core.schema import TextNode
+import uuid
 
 from models.question_model import QuestionData
 
@@ -23,17 +25,23 @@ class VectorStorageService:
         self._initialize_embedder()
 
     def _load_config(self) -> None:
-        self.upstash_url = os.getenv("UPSTASH_VECTOR_REST_URL")
-        self.upstash_token = os.getenv("UPSTASH_VECTOR_REST_TOKEN")
-        if not self.upstash_url or not self.upstash_token:
-            raise EnvironmentError("Missing Upstash credentials")
+        self.qdrant_url = os.getenv("QDRANT_URL")
+        self.qdrant_token = os.getenv("QDRANT_TOKEN")
+        self.collection_name = os.getenv("QDRANT_COLLECTION")
+        if not self.qdrant_url or not self.qdrant_token:
+            raise EnvironmentError("Missing Qdrant credentials")
 
     def _initialize_vector_store(self) -> None:
-        self.vector_store = UpstashVectorStore(
-            url=self.upstash_url,
-            token=self.upstash_token
+        self.qdrant_client = QdrantClient(
+            url=self.qdrant_url,
+            api_key=self.qdrant_token,
+        )
+        self.vector_store = QdrantVectorStore(
+            client=self.qdrant_client,
+            collection_name=self.collection_name 
         )
 
+ 
     def _initialize_embedder(self) -> None:
         self.embed_model = HuggingFaceEmbedding(
             model_name="sentence-transformers/all-MiniLM-L6-v2"
@@ -107,11 +115,12 @@ class VectorStorageService:
                 if additional_metadata:
                     metadata.update(additional_metadata)
                 return TextNode(
-                    id_=f"{question.question_id}-{chunk_type}",
+                    id_=str(uuid.uuid4()),
                     text=text,
                     metadata=metadata
                 )
             # Add chunks
+            nodes.append(make_node(question.title, "title"))
             nodes.append(make_node(question.problem_statement, "problem_statement"))
             nodes.append(make_node(question.understanding, "understanding"))
             if question.examples:
