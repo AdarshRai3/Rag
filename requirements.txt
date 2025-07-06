@@ -1,9 +1,13 @@
 google-generativeai>=0.8.2
 python-dotenv>=1.0.1
+
+# LlamaIndex + embeddings
 llama-index>=0.11.11
 llama-index-embeddings-huggingface>=0.3.1
-llama-index-vector-stores-upstash == 0.3.0
-upstash-vector== 0.4.0
+llama-index-vector-stores-qdrant>=0.3.1
+qdrant-client>=1.8.0
+
+# LiveKit AI Interview stack
 livekit==1.0.8
 livekit-agents==1.0.21
 livekit-api==1.0.2
@@ -15,4 +19,6 @@ livekit-plugins-openai==1.0.21
 livekit-plugins-silero==1.0.21
 livekit-plugins-turn-detector==1.0.21
 livekit-protocol==1.0.3
+
+# LLM APIs
 openai==1.77.0
